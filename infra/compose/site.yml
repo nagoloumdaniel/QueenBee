@@ -1,0 +1,60 @@
+# Stack d'une passerelle de site (mode Docker Compose par défaut ; K3s si >= 2 Go RAM : voir ../k3s).
+# Mosquitto local avec persistance disque (cache) et bridge vers le central (mosquitto/site.conf).
+name: queenbee-site
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    <<: [*restart, *logging]
+    ports:
+      - "1883:1883"   # réseau IoT du site uniquement (VLAN 40) : restreindre via pare-feu
+    volumes:
+      - ../mosquitto/site.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data       # file persistante = cache disque en cas de coupure
+      - /opt/queenbee/mosquitto-certs:/mosquitto/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/broker/uptime' -C 1 -W 3 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  edge-acoustic:
+    image: ghcr.io/${GHCR_OWNER:?}/queenbee-edge-acoustic:${QB_VERSION:-latest}
+    <<: [*restart, *logging]
+    environment:
+      EDGE_MQTT_HOST: mosquitto
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
+  # TODO(EP-05, [EDGE]): service « gateway-agent » (heartbeat toutes les minutes sur
+  # queenbee/{site}/gw/heartbeat : cpu, mem, batterie, profondeur de file, perte LoRa).
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    <<: [*restart, *logging]
+    pid: host
+    command: ["--path.rootfs=/host"]
+    volumes:
+      - /:/host:ro,rslave
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    <<: [*restart, *logging]
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ../../monitoring/loki/promtail-site.yml:/etc/promtail/promtail.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
+volumes:
+  mosquitto-data:

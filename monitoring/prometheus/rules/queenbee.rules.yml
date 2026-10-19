@@ -1,0 +1,70 @@
+# Alertes QueenBee (ROADMAP §6.1). Chaque alerte a un runbook dans docs/runbooks/ (à écrire : EP-10).
+# Les noms de métriques « queenbee_* » sont des contrats à implémenter par les tickets indiqués.
+groups:
+  - name: queenbee-availability
+    rules:
+      - alert: GatewayHeartbeatMissing
+        # Métrique exportée par l'ingestion à chaque heartbeat reçu (TODO EP-05/EP-10).
+        expr: time() - queenbee_gateway_last_heartbeat_timestamp_seconds > 15 * 60
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Passerelle {{ $labels.site }} sans heartbeat depuis plus de 15 min"
+          runbook: "docs/runbooks/gateway-offline.md"
+
+      - alert: VpnDown
+        # Ancienneté du dernier handshake WireGuard (exporter à ajouter : EP-10).
+        expr: time() - wireguard_latest_handshake_seconds > 5 * 60
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VPN WireGuard vers {{ $labels.site }} sans handshake depuis plus de 5 min"
+          runbook: "docs/runbooks/vpn-down.md"
+
+      - alert: ApiHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="queenbee-api",status=~"5.."}[5m]))
+            / sum(rate(http_requests_total{job="queenbee-api"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Plus de 5 % d'erreurs 5xx sur l'API"
+          runbook: "docs/runbooks/api-5xx.md"
+
+  - name: queenbee-sync
+    rules:
+      - alert: SyncQueueTooLarge
+        # Profondeur de file de sync/bridge, seuil à ajuster (EP-05/EP-10).
+        expr: queenbee_sync_queue_depth > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "File de synchronisation du site {{ $labels.site }} au-dessus du seuil ({{ $value }})"
+          runbook: "docs/runbooks/sync-queue.md"
+
+  - name: queenbee-infra
+    rules:
+      - alert: CertificateExpiresSoon
+        # Nécessite blackbox_exporter (voir prometheus.yml).
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Certificat TLS de {{ $labels.instance }} expire dans moins de 14 jours"
+          runbook: "docs/runbooks/certificate.md"
+
+      - alert: DiskUsageHigh
+        expr: |
+          (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+               / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) > 0.80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disque {{ $labels.mountpoint }} de {{ $labels.instance }} utilisé à plus de 80 %"
+          runbook: "docs/runbooks/disk.md"

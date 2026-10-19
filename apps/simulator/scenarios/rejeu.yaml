@@ -1,0 +1,13 @@
+# Injection / rejeu de données falsifiées (anti-rejeu, plages physiques, signature).
+scenario: rejeu_sn_casa_007
+description: "Trames rejouées (seq déjà vu), hors plage physique et mal signées."
+target: { hive: SN-CASA-007 }
+timeline:
+  - { at: "0m", action: normal }
+  - { at: "2m", action: inject_replay,       params: { count: 5 } }
+  - { at: "4m", action: inject_out_of_range, params: { field: weight_kg, value: 9999 } }
+  - { at: "6m", action: normal }
+ground_truth:
+  event: integrity
+  at: "2m"
+  expected_integrity_events: [replay, out_of_range]

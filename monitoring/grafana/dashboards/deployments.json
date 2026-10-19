@@ -1,0 +1,36 @@
+{
+  "uid": "qb-deployments",
+  "title": "QueenBee - Déploiements",
+  "description": "Succès %, durée, rollbacks (table deployment)",
+  "tags": [
+    "queenbee"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Taux de succès des déploiements",
+      "description": "Panneau de départ, à remplacer par la vraie requête (EP-10, [OBS]).",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [],
+      "options": {},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+# Propriétaires de code : relecture demandée automatiquement.
+# La règle la plus bas dans le fichier l'emporte. Affiner par zone quand l'équipe se répartit.
+* @nagoloumdaniel
+
+# Exemples de découpage futur (décommenter et adapter) :
+# /apps/web/       @nagoloumdaniel @Ibrahima0
+# /apps/mobile/    @nagoloumdaniel @wissam2005-ait
+# /infra/          @nagoloumdaniel
+# /docs/dossier/   @nagoloumdaniel

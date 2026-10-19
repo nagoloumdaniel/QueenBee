@@ -1,0 +1,10 @@
+# Géré par Ansible. La clé privée vient du vault (jamais en clair dans le dépôt).
+[Interface]
+Address = {{ qb_wireguard_address | default('10.200.0.2/32') }}
+PrivateKey = {{ qb_wireguard_private_key }}
+MTU = {{ wireguard_mtu }}
+{% if qb_wireguard_listen_port is defined %}
+ListenPort = {{ qb_wireguard_listen_port }}
+{% endif %}
+
+# TODO(EP-00, [INFRA]): un bloc [Peer] par site côté central, un seul [Peer] (le central) côté site.

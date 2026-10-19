@@ -1,0 +1,9 @@
+# Exemple d'ACL (à copier en acl.conf côté déploiement). Le CN du certificat = nom d'utilisateur.
+# Chaque passerelle ne peut publier que sous son propre site.
+user gw-sn-casa
+topic write queenbee/SN-CASA/#
+topic read  queenbee/SN-CASA/cmd/#
+
+# Service d'ingestion central : lit tout.
+user ingest
+topic read queenbee/#

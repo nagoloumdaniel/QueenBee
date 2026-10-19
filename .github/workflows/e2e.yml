@@ -1,0 +1,79 @@
+name: E2E
+
+# Stack Compose (infra/compose/e2e.yml) + Playwright (web) + Schemathesis (contrat OpenAPI) + k6 smoke.
+# Aucune tâche n'est « Done » sans E2E vert (ROADMAP §5.4b). Exécution nocturne du scénario de démo.
+on:
+  pull_request:
+    branches: [main, "phase/**"]
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E complet
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Démarrer la stack E2E
+        run: docker compose -f infra/compose/e2e.yml up -d --build --wait
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Migrations et seeds
+        run: |
+          docker compose -f infra/compose/e2e.yml exec -T api alembic upgrade head
+          # TODO(EP-02, [DB]): charger les seeds (8 sites, 400 ruches) quand ils existent.
+
+      - name: Contrat OpenAPI (Schemathesis, aucun 500 toléré)
+        run: |
+          pip install "schemathesis>=3.38,<4"
+          st run http://127.0.0.1:8000/api/v1/openapi.json --checks all --hypothesis-max-examples=50
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Parcours web (Playwright)
+        # TODO(EP-08, [QA]): playwright.config.ts doit démarrer le web (webServer) contre l'API à 127.0.0.1:8000.
+        working-directory: apps/web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+
+      - name: Smoke de charge (k6)
+        run: docker compose -f infra/compose/e2e.yml --profile load run --rm k6
+
+      - name: Journaux de la stack en cas d'échec
+        if: failure()
+        run: docker compose -f infra/compose/e2e.yml logs --no-color > e2e-stack.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-rapports
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            e2e-stack.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Arrêter la stack
+        if: always()
+        run: docker compose -f infra/compose/e2e.yml down -v

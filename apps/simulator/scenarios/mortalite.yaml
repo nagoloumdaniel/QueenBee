@@ -1,0 +1,13 @@
+# Mortalité / affaiblissement progressif de la colonie.
+scenario: mortalite_ruche_022
+description: "Activité acoustique en déclin lent puis nulle ; poids stagnant (colonie morte)."
+target: { hive: CI-DALO-022 }
+timeline:
+  - { at: "0d",  action: normal }
+  - { at: "7d",  action: acoustic_drift, params: { pct_per_day: -5 } }
+  - { at: "20d", action: weight_step,    params: { delta_kg: -1.5, duration: "5d" } }
+  - { at: "25d", action: sensor_silence, params: { keep_battery_reports: true } }
+ground_truth:
+  event: dead_colony
+  at: "25d"
+  expected_alert: dead_colony

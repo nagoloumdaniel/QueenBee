@@ -1,0 +1,87 @@
+# Stack E2E : API + base + broker + ingestion + simulateur (ROADMAP §5.4b).
+#   docker compose -f infra/compose/e2e.yml up -d --build --wait
+# Utilisée par .github/workflows/e2e.yml (Playwright, Schemathesis, k6) et en local.
+# Les mots de passe ci-dessous sont des valeurs jetables de test, valables uniquement dans ce réseau Docker.
+name: queenbee-e2e
+
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg16.6-ts2.17.2
+    environment:
+      POSTGRES_USER: queenbee
+      POSTGRES_PASSWORD: e2e-only-throwaway
+      POSTGRES_DB: queenbee
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U queenbee -d queenbee"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    tmpfs:
+      - /home/postgres/pgdata/data
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    volumes:
+      - ../mosquitto/dev.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/broker/uptime' -C 1 -W 3 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../../apps/api
+    environment:
+      QB_ENV: test
+      QB_DATABASE_URL: postgresql+asyncpg://queenbee:e2e-only-throwaway@postgres:5432/queenbee
+      QB_JWT_SECRET: e2e-only-throwaway-secret-at-least-32-bytes
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=2)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ingest:
+    build:
+      context: ../../apps/ingest
+    environment:
+      INGEST_MQTT_HOST: mosquitto
+      INGEST_DATABASE_URL: postgresql://queenbee:e2e-only-throwaway@postgres:5432/queenbee
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+
+  simulator:
+    build:
+      context: ../../apps/simulator
+    environment:
+      SIM_MQTT_HOST: mosquitto
+      SIM_API_URL: http://api:8000/api/v1
+      SIM_SPEED: "60"
+      SIM_SEED: "42"
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
+  # Test de charge smoke (profil « load ») : docker compose -f e2e.yml --profile load run --rm k6
+  k6:
+    image: grafana/k6:0.55.0
+    profiles: ["load"]
+    command: ["run", "/scripts/smoke.js"]
+    volumes:
+      - ../../apps/api/tests/e2e/k6:/scripts:ro
+    environment:
+      BASE_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy

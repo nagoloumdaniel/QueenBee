@@ -1,0 +1,11 @@
+# Déplacement non déclaré (vol de ruche, UC-CY04) : dérive GPS au-delà de tolerance_m.
+scenario: vol_ruche_cm_dsch_012
+description: "La position GPS dérive de plusieurs centaines de mètres sans déclaration de déplacement."
+target: { hive: CM-DSCH-012 }
+timeline:
+  - { at: "0h", action: normal }
+  - { at: "6h", action: gps_drift, params: { distance_m: 800, bearing_deg: 90, duration: "10m" } }
+ground_truth:
+  event: hive_moved
+  at: "6h"
+  expected_alert: hive_moved

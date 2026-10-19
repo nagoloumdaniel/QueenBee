@@ -1,0 +1,125 @@
+# Stack de développement local : tout se construit depuis le dépôt.
+#   cp .env.example .env && docker compose -f dev.yml up -d
+# Les ports sont publiés sur 127.0.0.1 uniquement.
+name: queenbee-dev
+
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg16.6-ts2.17.2
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-queenbee}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:-queenbee}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-queenbee} -d ${POSTGRES_DB:-queenbee}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ../mosquitto/dev.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h localhost -t '$$SYS/broker/uptime' -C 1 -W 3 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../../apps/api
+    environment:
+      QB_ENV: dev
+      QB_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-queenbee}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-queenbee}
+      QB_JWT_SECRET: ${QB_JWT_SECRET:?définir QB_JWT_SECRET dans .env}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ingest:
+    build:
+      context: ../../apps/ingest
+    environment:
+      INGEST_MQTT_HOST: mosquitto
+      INGEST_DATABASE_URL: postgresql://${POSTGRES_USER:-queenbee}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-queenbee}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
+
+  simulator:
+    build:
+      context: ../../apps/simulator
+    environment:
+      SIM_MQTT_HOST: mosquitto
+      SIM_API_URL: http://api:8000/api/v1
+      SIM_SPEED: "60"
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ../../monitoring/prometheus:/etc/prometheus:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ../../monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?définir GRAFANA_ADMIN_PASSWORD dans .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      POSTGRES_USER: ${POSTGRES_USER:-queenbee}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ../../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      - prometheus
+      - loki
+
+  n8n:
+    image: n8nio/n8n:1.70.3
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-}
+      GENERIC_TIMEZONE: UTC
+    ports:
+      - "127.0.0.1:5678:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ../../n8n/workflows:/workflows:ro
+
+volumes:
+  pgdata:
+  mosquitto-data:
+  loki-data:
+  grafana-data:
+  n8n-data:

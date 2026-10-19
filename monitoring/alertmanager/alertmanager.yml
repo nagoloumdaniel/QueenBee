@@ -1,0 +1,33 @@
+# Alertmanager : les alertes critiques partent vers n8n (workflow « alerte-critique-notification »).
+# Aucun identifiant ici : l'URL du webhook n8n est interne au réseau Docker.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: default
+  group_by: ["alertname", "site"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: n8n-critical
+      repeat_interval: 1h
+
+receivers:
+  - name: default
+    # Réception par défaut : visible dans l'interface Alertmanager/Grafana uniquement.
+  - name: n8n-critical
+    webhook_configs:
+      - url: "http://n8n:5678/webhook/alerte-critique"
+        send_resolved: true
+        # TODO(EP-09, [N8N]): authentification du webhook (en-tête secret via http_config.authorization.credentials_file).
+
+# Email : à configurer plus tard avec smtp_auth_password_file (jamais de mot de passe dans ce fichier).
+# TODO(EP-10, [OBS]): receiver email SMTP/SendGrid pour la production.
+
+inhibit_rules:
+  - source_matchers: ["severity=\"critical\""]
+    target_matchers: ["severity=\"warning\""]
+    equal: ["alertname", "site"]

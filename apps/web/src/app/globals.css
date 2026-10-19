@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tokens de design QueenBee (ROADMAP §4.7) - SOURCE UNIQUE côté web.
+ * Les mêmes valeurs existent côté mobile : apps/mobile/lib/core/theme/tokens.dart.
+ * Si une valeur change ici, la changer là-bas dans la MÊME PR.
+ *
+ * Contrastes validés AA (texte >= 4,5:1) : earth/cream, amber/cream, leaf/cream,
+ * alert/cream, earth/honey. À re-vérifier (axe-core + outil de contraste) si modifiés.
+ */
+:root {
+  /* Palette de marque */
+  --qb-honey: #e8a317;
+  --qb-amber: #8a5a00;
+  --qb-earth: #3b2a1a;
+  --qb-leaf: #4c7a3a;
+  --qb-cream: #fbf5e6;
+  --qb-alert: #c0392b;
+
+  /* Rôles sémantiques (mode clair) */
+  --background: var(--qb-cream);
+  --foreground: var(--qb-earth);
+  --surface: #ffffff;
+  --muted: #6b5844; /* texte secondaire, >= 4,5:1 sur crème */
+  --border: #e3d6b8;
+  --primary: var(--qb-honey);
+  --primary-foreground: var(--qb-earth);
+  --destructive: var(--qb-alert);
+  --destructive-foreground: #ffffff;
+  --success: var(--qb-leaf);
+  --link: var(--qb-amber);
+  --ring: var(--qb-amber);
+
+  /* Espacement (grille 4 px), rayons, ombres, motion */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --shadow-card: 0 1px 2px rgb(59 42 26 / 0.08), 0 4px 12px rgb(59 42 26 / 0.06);
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+
+  /* Cible tactile minimale (WCAG 2.2 AA : 24 px ; objectif projet : 48 dp) */
+  --target-min: 48px;
+}
+
+/* Mode sombre : préférence système, sauf si l'utilisateur force le clair */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #1f1610;
+    --foreground: var(--qb-cream);
+    --surface: #2b2017;
+    --muted: #cdbd9f;
+    --border: #4a3828;
+    --primary: var(--qb-honey);
+    --primary-foreground: var(--qb-earth);
+    --destructive: #f28b7d;
+    --destructive-foreground: #1f1610;
+    --success: #8fc27a;
+    --link: #f0c36a;
+    --ring: #f0c36a;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.3);
+  }
+}
+
+/* Mode sombre forcé par l'utilisateur (sélecteur de thème) */
+:root[data-theme="dark"] {
+  --background: #1f1610;
+  --foreground: var(--qb-cream);
+  --surface: #2b2017;
+  --muted: #cdbd9f;
+  --border: #4a3828;
+  --primary: var(--qb-honey);
+  --primary-foreground: var(--qb-earth);
+  --destructive: #f28b7d;
+  --destructive-foreground: #1f1610;
+  --success: #8fc27a;
+  --link: #f0c36a;
+  --ring: #f0c36a;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 12px rgb(0 0 0 / 0.3);
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-inter), system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-fraunces), Georgia, serif;
+  }
+
+  a {
+    color: var(--link);
+    text-underline-offset: 3px;
+  }
+
+  /* Focus toujours visible (clavier) - ne jamais retirer l'outline sans équivalent */
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Lien d'évitement : visible uniquement au focus clavier */
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -100px;
+  z-index: 100;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--foreground);
+  color: var(--background);
+}
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+/* Respect de prefers-reduced-motion (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

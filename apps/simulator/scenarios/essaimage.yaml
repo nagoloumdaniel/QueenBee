@@ -1,0 +1,13 @@
+# Essaimage (CDC §6.6, exemple de référence). Rejouable ; vérité terrain à t=15j.
+scenario: essaimage_ruche_014
+description: "Dérive d'activité acoustique, chute brutale de poids, retour à une activité normale (population réduite)."
+target: { hive: SN-CASA-014 }
+timeline:
+  - { at: "0d",     action: normal }
+  - { at: "10d",    action: acoustic_drift, params: { pct_per_day: -2 } }
+  - { at: "15d",    action: weight_step,    params: { delta_kg: -0.8, duration: "1h" } }
+  - { at: "15d+1h", action: normal }
+ground_truth:
+  event: swarming
+  at: "15d"
+  expected_alert: swarming

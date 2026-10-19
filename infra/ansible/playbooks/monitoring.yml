@@ -1,0 +1,7 @@
+---
+# Déploie uniquement la supervision (utile pour mettre à jour règles et dashboards).
+- name: Supervision QueenBee
+  hosts: central
+  become: true
+  roles:
+    - monitoring

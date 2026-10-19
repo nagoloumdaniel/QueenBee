@@ -1,0 +1,96 @@
+name: Security
+
+# Porte de sécurité (ROADMAP §5.3) : Snyk (dépendances, conteneurs, IaC), gitleaks, Trivy, Checkov.
+# Échec si vulnérabilité critique/haute non acceptée.
+on:
+  pull_request:
+    branches: [main, "phase/**"]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * 1"      # hebdomadaire : nouvelles CVE sur du code inchangé
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  snyk-deps:
+    name: Snyk (dépendances et code)
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}     # secret du dépôt ; jamais en clair
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Installer la CLI Snyk (version majeure épinglée)
+        run: npm install --global snyk@1
+      - name: Dépendances Python
+        run: |
+          for app in api ingest edge-acoustic simulator; do
+            snyk test --file="apps/$app/pyproject.toml" --package-manager=pip --severity-threshold=high || exit 1
+          done
+      - name: Dépendances web
+        run: snyk test --file=apps/web/package.json --severity-threshold=high
+      - name: Analyse du code (SAST)
+        run: snyk code test --severity-threshold=high
+
+  trivy:
+    name: Trivy (système de fichiers et images)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan du dépôt (dépendances, secrets, config)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          format: sarif
+          output: trivy-fs.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+      # Les images sont analysées dans release.yml avant publication.
+
+  checkov:
+    name: Checkov (IaC)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          framework: terraform,ansible,dockerfile,github_actions
+          output_format: sarif
+          output_file_path: checkov.sarif
+          soft_fail: false
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+          category: checkov

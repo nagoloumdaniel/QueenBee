@@ -1,0 +1,12 @@
+# Stress thermique : température interne hors plage du couvain.
+scenario: stress_thermique_ruche_031
+description: "Pic de température externe et interne en saison sèche (Casamance)."
+target: { hive: SN-BIGN-031 }
+timeline:
+  - { at: "0d",    action: normal }
+  - { at: "3d",    action: thermal_spike, params: { external_c: 44, internal_c: 38, duration: "6h" } }
+  - { at: "3d+6h", action: normal }
+ground_truth:
+  event: thermal_stress
+  at: "3d"
+  expected_alert: thermal_stress

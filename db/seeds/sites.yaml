@@ -1,0 +1,15 @@
+# Pays et sites. Alignés sur apps/simulator/config/sites.yaml (positions et profils indicatifs).
+countries:
+  - { code: SN, name: Sénégal, data_residency: "à trancher (ROADMAP §9.6)" }
+  - { code: CI, name: Côte d'Ivoire, data_residency: "à trancher (ROADMAP §9.6)" }
+  - { code: CM, name: Cameroun, data_residency: "à trancher (ROADMAP §9.6)" }
+
+sites:
+  - { code: SN-CASA, name: Ziguinchor, country_code: SN, lat: 12.5833, lon: -16.2833, climate_profile: soudano-sahelien }
+  - { code: SN-OUSS, name: Oussouye,   country_code: SN, lat: 12.4850, lon: -16.5469, climate_profile: soudano-sahelien }
+  - { code: SN-BIGN, name: Bignona,    country_code: SN, lat: 12.8081, lon: -16.2264, climate_profile: soudano-sahelien }
+  - { code: CI-DALO, name: Daloa,      country_code: CI, lat: 6.8774,  lon: -6.4502,  climate_profile: tropical-humide-bimodal }
+  - { code: CI-GAGN, name: Gagnoa,     country_code: CI, lat: 6.1319,  lon: -5.9506,  climate_profile: tropical-humide-bimodal }
+  - { code: CI-DIVO, name: Divo,       country_code: CI, lat: 5.8372,  lon: -5.3572,  climate_profile: tropical-humide-bimodal }
+  - { code: CM-BAFO, name: Bafoussam,  country_code: CM, lat: 5.4737,  lon: 10.4179,  climate_profile: tropical-altitude }
+  - { code: CM-DSCH, name: Dschang,    country_code: CM, lat: 5.4439,  lon: 10.0533,  climate_profile: tropical-altitude }

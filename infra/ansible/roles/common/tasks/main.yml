@@ -1,0 +1,20 @@
+---
+# Socle commun : paquets, mises à jour de sécurité, pare-feu, durcissement SSH.
+- name: Mettre à jour le cache apt
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Installer les paquets de base
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Activer les mises à jour de sécurité automatiques
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+
+# TODO(EP-00, [INFRA]): pare-feu ufw (SSH, 80/443 sur central, 51820/udp), politique par défaut deny.
+# TODO(EP-00, [INFRA]): durcissement SSH (PermitRootLogin no, PasswordAuthentication no) via template + handler.
+# TODO(EP-00, [INFRA]): synchronisation horaire (chrony) : indispensable pour l'anti-rejeu et les horodatages.

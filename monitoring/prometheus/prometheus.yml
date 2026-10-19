@@ -1,0 +1,43 @@
+# Configuration Prometheus (ROADMAP §6.1). Cibles = noms de services Docker de infra/compose/central.yml.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: queenbee-api
+    metrics_path: /metrics            # TODO(EP-10, [OBS]): exposer /metrics côté API (prometheus-fastapi-instrumentator)
+    static_configs:
+      - targets: ["api:8000"]
+
+  - job_name: queenbee-ingest
+    static_configs:
+      - targets: ["ingest:9100"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # Sites : node_exporter et métriques de passerelle joignables via le VPN WireGuard.
+  # TODO(EP-10, [OBS]): file_sd (cibles générées depuis l'inventaire Ansible) pour les 8 sites.
+  - job_name: sites-node
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/sites-*.yml"]
+
+  # TODO(EP-10, [OBS]): blackbox_exporter pour sonder https://${QB_DOMAIN}/health et lire
+  # l'expiration du certificat (probe_ssl_earliest_cert_expiry), exporter WireGuard (handshake).

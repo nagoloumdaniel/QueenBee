@@ -1,0 +1,4 @@
+---
+# Valeurs par défaut du rôle (surchargeables via group_vars / host_vars).
+common_packages: ["ca-certificates", "curl", "gnupg", "ufw", "unattended-upgrades", "chrony", "jq"]
+common_ssh_permit_root_login: "no"

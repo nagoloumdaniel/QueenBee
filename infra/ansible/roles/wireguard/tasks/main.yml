@@ -1,0 +1,10 @@
+---
+# VPN WireGuard site <-> central (ROADMAP §5.7 « Transport »).
+- name: Installer WireGuard
+  ansible.builtin.apt:
+    name: wireguard
+    state: present
+
+# TODO(EP-00, [INFRA]): générer/déployer les clés (privée depuis le vault, mode 0600), rendre
+#   templates/wg0.conf.j2 vers /etc/wireguard/wg0.conf, activer wg-quick@wg0.
+# TODO(EP-10, [OBS]): exposer l'ancienneté du dernier handshake (alerte « VPN down > 5 min »).

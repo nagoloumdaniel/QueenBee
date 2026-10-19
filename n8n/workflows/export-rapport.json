@@ -1,0 +1,68 @@
+{
+  "name": "Export rapport",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "export-rapport",
+        "options": {}
+      },
+      "id": "6c1d5a52-0011-4a01-9a01-000000000011",
+      "name": "Webhook export",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "export-rapport"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.QB_API_URL + '/reports' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.QB_API_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "id": "6c1d5a52-0012-4a01-9a01-000000000012",
+      "name": "Demander le rapport (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "TODO(EP-09, [N8N]): attendre la génération (GET /reports/{id}) puis diffuser le PDF."
+    }
+  ],
+  "connections": {
+    "Webhook export": {
+      "main": [
+        [
+          {
+            "node": "Demander le rapport (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

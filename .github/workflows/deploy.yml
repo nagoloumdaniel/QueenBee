@@ -1,0 +1,57 @@
+name: Deploy
+
+# Déploiement staging via Ansible, avec approbation manuelle (environnement GitHub « staging »
+# configuré avec des reviewers obligatoires). Les sites réels (pilote puis 2..8) restent des
+# déploiements manuels séparés (ROADMAP §5.3). Jamais de déploiement production sans accord explicite.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag SemVer à déployer (ex. v0.4.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy-staging:
+    name: Déployer en staging (approbation manuelle)
+    runs-on: ubuntu-latest
+    environment: staging          # Settings > Environments > staging > Required reviewers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ansible
+      - name: Préparer la clé SSH et le coffre Ansible
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$VAULT_PASSWORD" > /tmp/vault-pass
+          chmod 600 /tmp/vault-pass
+      - name: Déploiement Ansible (central, staging)
+        working-directory: infra/ansible
+        env:
+          ANSIBLE_VAULT_PASSWORD_FILE: /tmp/vault-pass
+        run: |
+          ansible-playbook -i inventories/staging/hosts.yml playbooks/central.yml \
+            -e qb_version="${{ inputs.version }}"
+      - name: Vérifier /health
+        run: curl --fail --retry 10 --retry-delay 6 "https://${{ vars.STAGING_DOMAIN }}/health"
+      # TODO(EP-00, [CI]): écrire la ligne `deployment` (statut, git_sha, durée) pour le KPI > 95 %,
+      #   et rollback automatique (re-déployer le tag précédent) si /health échoue.
+      - name: Nettoyer les secrets
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519 /tmp/vault-pass

@@ -1,0 +1,21 @@
+# Profils d'apiculteurs simulés (CDC §6.6). La somme des parts vaut 1.
+profiles:
+  - name: assidu
+    share: 0.30
+    inspection_every_days: [6, 8]        # hebdomadaire
+    connectivity_probability: 0.95       # synchronise dès que possible
+  - name: regulier
+    share: 0.50
+    inspection_every_days: [14, 21]      # toutes les 2-3 semaines
+    connectivity_probability: 0.70
+  - name: occasionnel
+    share: 0.20
+    inspection_every_days: [25, 45]      # mensuel ou irrégulier
+    connectivity_probability: 0.30       # connexion sporadique
+
+harvest:
+  # Déclarations autour des pics de miellée, avec écart vs prédiction du modèle (UC-C02).
+  declare_within_days_of_peak: 10
+  gap_pct_mean: 0.0
+  gap_pct_stddev: 12.0
+  anomalous_gap_probability: 0.05        # écart fort => statut « flagged »

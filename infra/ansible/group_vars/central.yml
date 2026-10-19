@@ -1,0 +1,7 @@
+---
+# Spécifique au serveur central.
+qb_compose_file: "central.yml"
+qb_wireguard_address: "10.200.0.1/24"
+qb_wireguard_listen_port: 51820
+# Secrets attendus dans un fichier chiffré (ansible-vault) : qb_postgres_password, qb_jwt_secret,
+# qb_wireguard_private_key, qb_grafana_admin_password.

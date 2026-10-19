@@ -1,0 +1,19 @@
+# 16 coopératives (2 par site). `beekeepers` = apiculteurs cibles ; total attendu : 296.
+# Noms fictifs. Les 21 autres utilisateurs (16 coordinateurs, 4 gestionnaires, 1 admin) ne dépendent pas d'une coopérative unique.
+cooperatives:
+  - { site_code: SN-CASA, name: "Coopérative SN-CASA A", beekeepers: 19 }
+  - { site_code: SN-CASA, name: "Coopérative SN-CASA B", beekeepers: 19 }
+  - { site_code: SN-OUSS, name: "Coopérative SN-OUSS A", beekeepers: 19 }
+  - { site_code: SN-OUSS, name: "Coopérative SN-OUSS B", beekeepers: 19 }
+  - { site_code: SN-BIGN, name: "Coopérative SN-BIGN A", beekeepers: 19 }
+  - { site_code: SN-BIGN, name: "Coopérative SN-BIGN B", beekeepers: 19 }
+  - { site_code: CI-DALO, name: "Coopérative CI-DALO A", beekeepers: 19 }
+  - { site_code: CI-DALO, name: "Coopérative CI-DALO B", beekeepers: 19 }
+  - { site_code: CI-GAGN, name: "Coopérative CI-GAGN A", beekeepers: 18 }
+  - { site_code: CI-GAGN, name: "Coopérative CI-GAGN B", beekeepers: 18 }
+  - { site_code: CI-DIVO, name: "Coopérative CI-DIVO A", beekeepers: 18 }
+  - { site_code: CI-DIVO, name: "Coopérative CI-DIVO B", beekeepers: 18 }
+  - { site_code: CM-BAFO, name: "Coopérative CM-BAFO A", beekeepers: 18 }
+  - { site_code: CM-BAFO, name: "Coopérative CM-BAFO B", beekeepers: 18 }
+  - { site_code: CM-DSCH, name: "Coopérative CM-DSCH A", beekeepers: 18 }
+  - { site_code: CM-DSCH, name: "Coopérative CM-DSCH B", beekeepers: 18 }

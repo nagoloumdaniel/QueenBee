@@ -1,0 +1,5 @@
+.next
+node_modules
+coverage
+playwright-report
+src/lib/api-types.gen.ts

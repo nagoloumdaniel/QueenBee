@@ -1,0 +1,168 @@
+# Stack du serveur central (VM Oracle). Images publiées sur GHCR, versions pilotées par QB_VERSION.
+# Déployée par Ansible (rôle central) avec un fichier central.env géré par le coffre (vault).
+name: queenbee-central
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  caddy:
+    image: caddy:2.9.1
+    <<: [*restart, *logging]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      QB_DOMAIN: ${QB_DOMAIN:?}
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - grafana
+
+  postgres:
+    image: timescale/timescaledb-ha:pg16.6-ts2.17.2
+    <<: [*restart, *logging]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-queenbee}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:-queenbee}
+    volumes:
+      - pgdata:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-queenbee} -d ${POSTGRES_DB:-queenbee}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0.20
+    <<: [*restart, *logging]
+    # 8883 (TLS) exposé au VPN WireGuard uniquement : voir pare-feu (Ansible/ufw).
+    ports:
+      - "8883:8883"
+    volumes:
+      - ../mosquitto/central.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+      - /opt/queenbee/mosquitto-certs:/mosquitto/certs:ro   # fournis par Ansible, jamais dans le dépôt
+
+  api:
+    image: ghcr.io/${GHCR_OWNER:?}/queenbee-api:${QB_VERSION:-latest}
+    <<: [*restart, *logging]
+    environment:
+      QB_ENV: production
+      QB_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-queenbee}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-queenbee}
+      QB_JWT_SECRET: ${QB_JWT_SECRET:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ingest:
+    image: ghcr.io/${GHCR_OWNER:?}/queenbee-ingest:${QB_VERSION:-latest}
+    <<: [*restart, *logging]
+    environment:
+      INGEST_MQTT_HOST: mosquitto
+      INGEST_MQTT_PORT: "8883"
+      INGEST_MQTT_USERNAME: ${MQTT_USERNAME:?}
+      INGEST_MQTT_PASSWORD: ${MQTT_PASSWORD:?}
+      INGEST_DATABASE_URL: postgresql://${POSTGRES_USER:-queenbee}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-queenbee}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+
+  web:
+    image: ghcr.io/${GHCR_OWNER:?}/queenbee-web:${QB_VERSION:-latest}
+    <<: [*restart, *logging]
+    environment:
+      NEXT_PUBLIC_API_URL: https://${QB_DOMAIN}/api/v1
+
+  n8n:
+    image: n8nio/n8n:1.70.3
+    <<: [*restart, *logging]
+    environment:
+      N8N_HOST: n8n.${QB_DOMAIN}
+      N8N_PROTOCOL: https
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?}
+      GENERIC_TIMEZONE: UTC
+    volumes:
+      - n8n-data:/home/node/.n8n
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    <<: [*restart, *logging]
+    volumes:
+      - ../../monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+      - --web.enable-lifecycle
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    <<: [*restart, *logging]
+    volumes:
+      - ../../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+
+  loki:
+    image: grafana/loki:3.3.2
+    <<: [*restart, *logging]
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ../../monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    <<: [*restart, *logging]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: https://grafana.${QB_DOMAIN}
+      POSTGRES_USER: ${POSTGRES_USER:-queenbee}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ../../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    <<: [*restart, *logging]
+    pid: host
+    command: ["--path.rootfs=/host"]
+    volumes:
+      - /:/host:ro,rslave
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    <<: [*restart, *logging]
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
+volumes:
+  caddy-data:
+  caddy-config:
+  pgdata:
+  mosquitto-data:
+  n8n-data:
+  prometheus-data:
+  alertmanager-data:
+  loki-data:
+  grafana-data:

@@ -1,0 +1,13 @@
+---
+# Déploie la stack centrale (infra/compose/central.yml) dans {{ qb_deploy_dir }}.
+- name: Créer le répertoire de déploiement
+  ansible.builtin.file:
+    path: "{{ qb_deploy_dir }}"
+    state: directory
+    mode: "0750"
+
+# TODO(EP-00, [INFRA]): copier central.yml, Caddyfile, mosquitto/central.conf, monitoring/ ;
+#   générer central.env depuis le template (secrets issus du vault, mode 0600).
+# TODO(EP-00, [INFRA]): `docker compose pull && up -d` puis attendre GET /health = 200.
+# TODO(EP-00, [INFRA]): écrire une ligne dans la table `deployment` (KPI déploiements > 95 %) et
+#   prévoir le rollback (re-déployer le tag précédent) testé avant tout site.

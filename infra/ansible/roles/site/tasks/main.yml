@@ -1,0 +1,12 @@
+---
+# Déploie la stack d'un site (infra/compose/site.yml) : Mosquitto + bridge, edge-acoustic, exporters.
+- name: Créer le répertoire de déploiement
+  ansible.builtin.file:
+    path: "{{ qb_deploy_dir }}"
+    state: directory
+    mode: "0750"
+
+# TODO(EP-05, [EDGE]): copier site.yml et mosquitto/site.conf (activer le bridge TLS), déposer le
+#   certificat client (vault), créer le volume du cache disque (persistance MQTT) ;
+#   `docker compose up -d` ; vérifier le heartbeat côté central.
+# TODO(EP-05, [EDGE]): variante K3s si la passerelle a >= 2 Go de RAM (infra/k3s).

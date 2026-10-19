@@ -1,0 +1,36 @@
+{
+  "uid": "qb-services-health",
+  "title": "QueenBee - Santé des services",
+  "description": "CPU/RAM, latence p95, erreurs 5xx",
+  "tags": [
+    "queenbee"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Utilisation CPU par service",
+      "description": "Panneau de départ, à remplacer par la vraie requête (EP-10, [OBS]).",
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [],
+      "options": {},
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    }
+  ]
+}

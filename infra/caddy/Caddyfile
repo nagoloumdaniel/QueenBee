@@ -1,0 +1,58 @@
+# Reverse proxy Caddy : TLS automatique (ACME), TLS 1.3 minimum, en-têtes de sécurité (ROADMAP §5.7).
+# Variable d'environnement attendue : QB_DOMAIN (ex. queenbee.example.org).
+{
+	email admin@{$QB_DOMAIN}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	# TODO(EP-08, [SEC]): Content-Security-Policy stricte (selon les assets du dashboard).
+}
+
+{$QB_DOMAIN} {
+	import security_headers
+	tls {
+		protocols tls1.3
+	}
+	encode zstd gzip
+
+	# API : sondes et contrat versionné.
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /health {
+		reverse_proxy api:8000
+	}
+	handle /ready {
+		reverse_proxy api:8000
+	}
+
+	# Tout le reste : application web Next.js (landing publique + dashboard privé).
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+grafana.{$QB_DOMAIN} {
+	import security_headers
+	tls {
+		protocols tls1.3
+	}
+	# TODO(EP-10, [OBS]): restreindre l'accès (VPN ou authentification forte).
+	reverse_proxy grafana:3000
+}
+
+n8n.{$QB_DOMAIN} {
+	import security_headers
+	tls {
+		protocols tls1.3
+	}
+	# TODO(EP-09, [N8N]): restreindre l'accès à l'éditeur ; garder ouverts uniquement les webhooks utiles.
+	reverse_proxy n8n:5678
+}

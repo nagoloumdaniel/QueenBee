@@ -1,0 +1,20 @@
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "lib/l10n/gen/**"
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # Les commentaires de doc sont en français (norme du projet) : pas de règle de langue.
+    public_member_api_docs: false
+    # Les écrans squelettes contiennent des TODO(KAN-xxx) volontaires
+    flutter_style_todos: false
+    # Tri des imports géré par `dart format` + review
+    lines_longer_than_80_chars: false

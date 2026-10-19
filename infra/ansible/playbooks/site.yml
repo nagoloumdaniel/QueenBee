@@ -1,0 +1,11 @@
+---
+# Déploie une passerelle de site (Docker Compose par défaut, K3s optionnel si >= 2 Go RAM).
+- name: Passerelles de site QueenBee
+  hosts: sites
+  become: true
+  serial: 1               # un site à la fois ; le site pilote d'abord (limiter avec --limit)
+  roles:
+    - common
+    - docker
+    - wireguard
+    - site

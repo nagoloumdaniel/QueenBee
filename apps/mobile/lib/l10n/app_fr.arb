@@ -1,0 +1,59 @@
+{
+  "@@locale": "fr",
+  "appTitle": "QueenBee",
+
+  "navHives": "Mes ruches",
+  "navAlerts": "Alertes",
+  "navHarvest": "Récolte",
+  "navProfile": "Profil",
+
+  "loginTitle": "Connexion",
+  "loginEmail": "Adresse e-mail",
+  "loginPassword": "Mot de passe",
+  "loginSubmit": "Se connecter",
+  "loginError": "Identifiants incorrects",
+
+  "hivesTitle": "Mes ruches",
+  "hivesEmpty": "Aucune ruche pour le moment",
+  "hivesScanQr": "Scanner le QR code d'une ruche",
+
+  "hiveDetailTitle": "Détail de la ruche",
+  "hiveWeight": "Poids",
+  "hiveHealthScore": "Score de santé",
+  "hiveGraph7d": "Poids sur 7 jours",
+  "hiveNewInspection": "Nouvelle inspection",
+
+  "inspectionTitle": "Nouvelle inspection",
+  "inspectionStepOf": "Étape {current} sur {total}",
+  "@inspectionStepOf": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "inspectionNext": "Suivant",
+  "inspectionBack": "Retour",
+  "inspectionSave": "Enregistrer",
+  "inspectionSavedOffline": "Enregistrée sur le téléphone. Elle sera envoyée dès le retour du réseau.",
+
+  "alertsTitle": "Alertes",
+  "alertsEmpty": "Aucune alerte, tout va bien",
+
+  "harvestTitle": "Déclarer une récolte",
+  "harvestVolumeKg": "Volume récolté (kg)",
+  "harvestSubmit": "Déclarer",
+
+  "profileTitle": "Profil et synchronisation",
+  "syncNow": "Synchroniser maintenant",
+  "syncPending": "{count, plural, =0{Tout est synchronisé} =1{1 élément à synchroniser} other{{count} éléments à synchroniser}}",
+  "@syncPending": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "offlineBanner": "Hors ligne",
+  "commonRetry": "Réessayer",
+  "commonLoading": "Chargement…",
+  "commonError": "Une erreur est survenue"
+}

@@ -1,0 +1,4 @@
+---
+- name: Recharger la stack du site
+  ansible.builtin.command: docker compose -f {{ qb_deploy_dir }}/{{ qb_compose_file }} up -d --remove-orphans
+  changed_when: true

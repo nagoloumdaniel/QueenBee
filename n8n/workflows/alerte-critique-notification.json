@@ -1,0 +1,125 @@
+{
+  "name": "Alerte critique - notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alerte-critique",
+        "options": {}
+      },
+      "id": "6c1d5a52-0001-4a01-9a01-000000000001",
+      "name": "Webhook alerte",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "alerte-critique"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-severity",
+              "leftValue": "={{ $json.body.alerts[0].labels.severity }}",
+              "rightValue": "critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "6c1d5a52-0002-4a01-9a01-000000000002",
+      "name": "Est critique ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FCM_PROXY_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: 'Alerte critique', body: $json.body.alerts[0].annotations.summary }) }}",
+        "options": {}
+      },
+      "id": "6c1d5a52-0003-4a01-9a01-000000000003",
+      "name": "Push FCM (via proxy)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        -80
+      ],
+      "notes": "TODO(EP-09, [N8N]): configurer les identifiants dans n8n (jamais dans ce fichier)."
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.ALERT_FROM_EMAIL }}",
+        "toEmail": "={{ $env.ALERT_TO_EMAIL }}",
+        "subject": "={{ '[QueenBee] ' + $json.body.alerts[0].labels.alertname }}",
+        "text": "={{ $json.body.alerts[0].annotations.summary }}",
+        "options": {}
+      },
+      "id": "6c1d5a52-0004-4a01-9a01-000000000004",
+      "name": "Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        480,
+        80
+      ],
+      "notes": "TODO(EP-09, [N8N]): associer un identifiant SMTP créé dans l'interface n8n."
+    }
+  ],
+  "connections": {
+    "Webhook alerte": {
+      "main": [
+        [
+          {
+            "node": "Est critique ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Est critique ?": {
+      "main": [
+        [
+          {
+            "node": "Push FCM (via proxy)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}

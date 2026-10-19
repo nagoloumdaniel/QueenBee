@@ -1,0 +1,9 @@
+---
+# Installation de Docker Engine + plugin compose depuis le dépôt officiel.
+# TODO(EP-00, [INFRA]): ajouter la clé GPG et le dépôt apt Docker, installer
+#   docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin ; activer le service.
+- name: Installer Docker (à compléter)
+  ansible.builtin.debug:
+    msg: "TODO(EP-00, [INFRA]): installer Docker Engine et le plugin compose"
+
+# TODO(EP-00, [INFRA]): /etc/docker/daemon.json (rotation des logs json-file, live-restore) + handler.

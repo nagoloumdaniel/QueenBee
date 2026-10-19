@@ -1,0 +1,6 @@
+---
+# Spécifique aux passerelles de site.
+qb_compose_file: "site.yml"
+qb_wireguard_central_endpoint: "{{ hostvars[groups['central'][0]].ansible_host }}:51820"
+# Chaque hôte définit site_code (ex. SN-CASA). Secrets attendus (vault) : qb_wireguard_private_key par hôte,
+# certificat client MQTT du bridge.

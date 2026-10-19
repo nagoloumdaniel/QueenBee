@@ -1,0 +1,12 @@
+# Passerelle hors ligne (UC-CY01) : démonstration chronométrée du mode dégradé (EP-11).
+scenario: passerelle_offline_ci_dalo
+description: "Coupure de la passerelle du site pendant 15 min puis reprise ; zéro perte attendue."
+target: { site: CI-DALO }
+timeline:
+  - { at: "0m",  action: normal }
+  - { at: "10m", action: gateway_offline, params: { buffer_locally: true } }
+  - { at: "25m", action: normal }          # reprise : rattrapage depuis le cache disque
+ground_truth:
+  event: gateway_offline
+  at: "10m"
+  expected_alert: gateway_offline        # attendu à 15 min sans heartbeat

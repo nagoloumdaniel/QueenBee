@@ -1,0 +1,7 @@
+---
+# Variables communes à tous les hôtes. Aucun secret ici : utiliser ansible-vault / SOPS.
+qb_domain: "queenbee.example.org"          # TODO: domaine réel (Caddy, TLS automatique)
+qb_registry: "ghcr.io/OWNER/queenbee"      # TODO: remplacer OWNER par l'organisation GitHub
+qb_version: "latest"                       # surchargé par le pipeline de déploiement (tag SemVer)
+qb_deploy_dir: "/opt/queenbee"
+docker_compose_plugin_version: "2.29.*"

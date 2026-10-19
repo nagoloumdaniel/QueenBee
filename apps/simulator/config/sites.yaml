@@ -1,0 +1,121 @@
+# 8 sites, 3 pays (CDC §6.6). Valeurs INDICATIVES : à affiner avec Data (généralisation inter-sites).
+# Chaque site a ses propres paramètres (pas de profil dupliqué). Total : 8 x 50 = 400 ruches.
+# Miellées au format MM-JJ ; une période peut franchir le nouvel an (start > end).
+sites:
+  # --- Sénégal (Casamance) : soudano-sahélien, saison sèche nov-mai, une seule miellée marquée ---
+  - code: SN-CASA
+    name: Ziguinchor
+    country: SN
+    lat: 12.5833
+    lon: -16.2833
+    hives: 50
+    climate: &sn_climate
+      label: soudano-sahelien
+      base_temp_c: 28.0
+      seasonal_amplitude_c: 4.0
+      diurnal_amplitude_c: 7.0
+      base_humidity_pct: 55
+      dry_season: ["11", "12", "01", "02", "03", "04", "05"]
+      thermal_stress_prone: true
+      honeyflows:
+        - { start: "11-01", end: "01-15", gain_kg_per_day: 0.9 }
+  - code: SN-OUSS
+    name: Oussouye
+    country: SN
+    lat: 12.4850
+    lon: -16.5469
+    hives: 50
+    climate:
+      <<: *sn_climate
+      base_temp_c: 27.5
+      base_humidity_pct: 62          # plus proche de la côte
+      honeyflows:
+        - { start: "11-15", end: "02-01", gain_kg_per_day: 0.8 }
+  - code: SN-BIGN
+    name: Bignona
+    country: SN
+    lat: 12.8081
+    lon: -16.2264
+    hives: 50
+    climate:
+      <<: *sn_climate
+      base_temp_c: 29.0
+      diurnal_amplitude_c: 8.0
+      base_humidity_pct: 50
+      honeyflows:
+        - { start: "10-20", end: "01-05", gain_kg_per_day: 1.0 }
+
+  # --- Côte d'Ivoire (zone forestière) : tropical humide bimodal, deux miellées, humidité élevée ---
+  - code: CI-DALO
+    name: Daloa
+    country: CI
+    lat: 6.8774
+    lon: -6.4502
+    hives: 50
+    climate: &ci_climate
+      label: tropical-humide-bimodal
+      base_temp_c: 26.5
+      seasonal_amplitude_c: 1.5
+      diurnal_amplitude_c: 5.0
+      base_humidity_pct: 80
+      dry_season: ["12", "01", "02"]
+      thermal_stress_prone: false
+      honeyflows:
+        - { start: "02-15", end: "04-15", gain_kg_per_day: 0.7 }
+        - { start: "09-15", end: "11-15", gain_kg_per_day: 0.6 }
+  - code: CI-GAGN
+    name: Gagnoa
+    country: CI
+    lat: 6.1319
+    lon: -5.9506
+    hives: 50
+    climate:
+      <<: *ci_climate
+      base_humidity_pct: 82
+      honeyflows:
+        - { start: "02-01", end: "04-01", gain_kg_per_day: 0.7 }
+        - { start: "09-20", end: "11-20", gain_kg_per_day: 0.65 }
+  - code: CI-DIVO
+    name: Divo
+    country: CI
+    lat: 5.8372
+    lon: -5.3572
+    hives: 50
+    climate:
+      <<: *ci_climate
+      base_temp_c: 26.0
+      base_humidity_pct: 84
+      honeyflows:
+        - { start: "02-10", end: "04-10", gain_kg_per_day: 0.75 }
+        - { start: "09-10", end: "11-10", gain_kg_per_day: 0.6 }
+
+  # --- Cameroun (Ouest, altitude) : plus frais, miellée étalée, plus de variabilité jour/nuit ---
+  - code: CM-BAFO
+    name: Bafoussam
+    country: CM
+    lat: 5.4737
+    lon: 10.4179
+    hives: 50
+    climate: &cm_climate
+      label: tropical-altitude
+      base_temp_c: 21.0
+      seasonal_amplitude_c: 2.0
+      diurnal_amplitude_c: 9.0
+      base_humidity_pct: 70
+      dry_season: ["11", "12", "01", "02"]
+      thermal_stress_prone: false
+      honeyflows:
+        - { start: "01-15", end: "05-15", gain_kg_per_day: 0.45 }
+  - code: CM-DSCH
+    name: Dschang
+    country: CM
+    lat: 5.4439
+    lon: 10.0533
+    hives: 50
+    climate:
+      <<: *cm_climate
+      base_temp_c: 19.5
+      diurnal_amplitude_c: 10.0
+      base_humidity_pct: 74
+      honeyflows:
+        - { start: "02-01", end: "06-01", gain_kg_per_day: 0.4 }

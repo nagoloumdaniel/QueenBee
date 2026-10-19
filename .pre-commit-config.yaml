@@ -1,0 +1,46 @@
+# Hooks pre-commit QueenBee. Installation : `pip install pre-commit && pre-commit install`.
+# Lancer partout : `pre-commit run --all-files`.
+# Versions épinglées : les mettre à jour avec `pre-commit autoupdate` dans une PR dédiée.
+# Hooks de la ROADMAP §5.2 non encore branchés ici (mypy, eslint, dart format) : lancés par `make lint` / `make fmt` et en CI.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+        # Les charts/templates non-YAML pur sont exclus s'il y en a (ajouter un motif ici)
+      - id: check-json
+        exclude: (tsconfig.*\.json|\.vscode/)
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        # Même longueur de ligne que ruff (pyproject des apps Python)
+        args: [--line-length=120]
+
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.4.2
+    hooks:
+      - id: prettier
+        # Seulement le code web (le Markdown n'est pas reformaté : tableaux et gabarits du dossier)
+        files: ^apps/web/.*\.(ts|tsx|js|jsx|mjs|css|json)$
+        exclude: (package-lock\.json|api-types\.gen\.ts)
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.22.1
+    hooks:
+      - id: gitleaks

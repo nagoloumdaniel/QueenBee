@@ -1,0 +1,3 @@
+---
+# Valeurs par défaut du rôle (surchargeables via group_vars / host_vars).
+monitoring_dir: "{{ qb_deploy_dir }}/monitoring"

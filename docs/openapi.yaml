@@ -1,0 +1,1689 @@
+openapi: 3.1.0
+info:
+  title: QueenBee API
+  version: 0.1.0
+  summary: "Contrat d'interface de la plateforme QueenBee (squelette, ROADMAP 4.10)."
+  description: |
+    Squelette du contrat d'API REST de QueenBee. Source de verite pour :
+      - les types TypeScript du dashboard web (npm run gen:api dans apps/web) ;
+      - les DTO de l'app mobile (apps/mobile) ;
+      - les tests de contrat (Schemathesis : aucun statut 500, schema respecte).
+
+    Regles (ROADMAP 4.10) : prefixe /api/v1, pagination par curseur, ETag, erreurs RFC 9457
+    (application/problem+json), versionnement, rate limit (429), en-tete Idempotency-Key sur les POST.
+
+    Ce fichier est un SQUELETTE : les schemas de requete/reponse sont volontairement minimaux.
+    Le ticket API (epic EP-06) les precise AVANT d'ecrire le code (contrat d'abord). Chaque
+    endpoint indique le use case associe (UC-xx).
+  license:
+    name: Proprietary (projet pedagogique INGETIS)
+    identifier: LicenseRef-QueenBee
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Developpement local (stack Compose)
+  - url: https://staging.queenbee.example/api/v1
+    description: Staging (hote d'exemple, a remplacer)
+tags:
+  - name: Auth
+    description: "Authentification, MFA, session (UC-T01)"
+  - name: Users
+    description: "Utilisateurs, roles et audit - admin (UC-AD01)"
+  - name: Sites
+    description: "Sites et cooperatives"
+  - name: Hives
+    description: "Ruches et mesures (UC-A01, UC-C01)"
+  - name: Inspections
+    description: "Inspections de terrain (UC-A01)"
+  - name: Harvests
+    description: "Recoltes (UC-A03, UC-C02)"
+  - name: Alerts
+    description: "Alertes (UC-A02)"
+  - name: Visits
+    description: "Planification des visites (UC-C01)"
+  - name: Sync
+    description: "Synchronisation hors ligne (UC-A01, UC-T01)"
+  - name: Analytics
+    description: "KPIs et rapports bailleur (UC-G01, UC-G02)"
+  - name: Ops
+    description: "Sante, metriques, deploiements, files de sync (DevOps)"
+  - name: Simulator
+    description: "Pilotage du simulateur de capteurs (environnements de test uniquement)"
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: "Connexion e-mail + mot de passe (UC-T01)"
+      description: "Retourne soit les jetons, soit un defi MFA (code TOTP) pour les roles prives. Verrou apres 5 echecs. Message d'erreur generique."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: "Authentifie ou defi MFA requis"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "423":
+          $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /auth/mfa/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyMfa
+      summary: "Verifier le code TOTP"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MfaVerifyRequest"
+      responses:
+        "200":
+          description: "Jetons emis"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshToken
+      summary: "Rotation du refresh token"
+      description: "Chaque refresh est a usage unique. Reutilisation d'un ancien refresh = revocation de toute la famille."
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: "Nouvelle paire de jetons"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: "Deconnexion (revoque la famille de refresh)"
+      responses:
+        "204":
+          description: "Deconnecte"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /me:
+    get:
+      tags: [Auth]
+      operationId: getMe
+      summary: "Utilisateur courant"
+      responses:
+        "200":
+          description: "Profil minimal (aucune donnee superflue)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /users:
+    get:
+      tags: [Users]
+      operationId: listUsers
+      summary: "Lister les utilisateurs (admin)"
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page d'utilisateurs"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPage"
+        "403":
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [Users]
+      operationId: createUser
+      summary: "Creer un utilisateur (admin, UC-AD01)"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: "Utilisateur cree (action tracee dans l'audit)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /users/{id}:
+    patch:
+      tags: [Users]
+      operationId: updateUser
+      summary: "Modifier / desactiver un utilisateur (admin)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: "Utilisateur modifie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /users/{id}/roles:
+    post:
+      tags: [Users]
+      operationId: setUserRole
+      summary: "Attribuer un role (admin)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  $ref: "#/components/schemas/Role"
+      responses:
+        "200":
+          description: "Role mis a jour"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "403":
+          $ref: "#/components/responses/Problem"
+  /audit:
+    get:
+      tags: [Users]
+      operationId: listAudit
+      summary: "Journal d'audit (admin, lecture seule, append-only)"
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page d'entrees d'audit"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditPage"
+        "403":
+          $ref: "#/components/responses/Problem"
+  /sites:
+    get:
+      tags: [Sites]
+      operationId: listSites
+      summary: "Lister les sites accessibles (RLS par site)"
+      responses:
+        "200":
+          description: "Sites"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Site"
+  /sites/{id}/summary:
+    get:
+      tags: [Sites]
+      operationId: getSiteSummary
+      summary: "Synthese d'un site (UC-G01)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: "Synthese"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteSummary"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /cooperatives:
+    get:
+      tags: [Sites]
+      operationId: listCooperatives
+      summary: "Lister les cooperatives"
+      responses:
+        "200":
+          description: "Cooperatives"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Cooperative"
+  /hives:
+    get:
+      tags: [Hives]
+      operationId: listHives
+      summary: "Lister les ruches (filtres site, risque, bbox) - UC-C01"
+      parameters:
+        - name: site
+          in: query
+          schema:
+            type: string
+          description: "Code du site (ex. SN-CASA)"
+        - name: risk
+          in: query
+          schema:
+            $ref: "#/components/schemas/Severity"
+        - name: bbox
+          in: query
+          schema:
+            type: string
+          description: "Emprise geographique : minLon,minLat,maxLon,maxLat"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page de ruches triees par risque"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HivePage"
+    post:
+      tags: [Hives]
+      operationId: createHive
+      summary: "Creer une ruche"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HiveCreate"
+      responses:
+        "201":
+          description: "Ruche creee"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hive"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /hives/{id}:
+    get:
+      tags: [Hives]
+      operationId: getHive
+      summary: "Detail d'une ruche (UC-A01)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: "Ruche"
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hive"
+        "404":
+          $ref: "#/components/responses/Problem"
+    patch:
+      tags: [Hives]
+      operationId: updateHive
+      summary: "Modifier une ruche"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HiveUpdate"
+      responses:
+        "200":
+          description: "Ruche modifiee"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hive"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /hives/{id}/measurements:
+    get:
+      tags: [Hives]
+      operationId: listMeasurements
+      summary: "Mesures d'une ruche, agregees par intervalle (graphe 7 jours)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: bucket
+          in: query
+          schema:
+            type: string
+            enum: [raw, hour, day]
+            default: hour
+      responses:
+        "200":
+          description: "Serie temporelle"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Measurement"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /hives/by-qr/{token}:
+    get:
+      tags: [Hives]
+      operationId: getHiveByQr
+      summary: "Retrouver une ruche par QR code (UC-A01)"
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Ruche"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hive"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /inspections:
+    get:
+      tags: [Inspections]
+      operationId: listInspections
+      summary: "Lister les inspections d'une ruche"
+      parameters:
+        - name: hive_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page d'inspections"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionPage"
+    post:
+      tags: [Inspections]
+      operationId: createInspection
+      summary: "Enregistrer une inspection (UC-A01) - idempotent par client_uuid"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InspectionCreate"
+      responses:
+        "201":
+          description: "Inspection creee"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Inspection"
+        "200":
+          description: "client_uuid deja connu : ressource existante renvoyee (pas de doublon)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Inspection"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /inspections/{id}/photos:
+    post:
+      tags: [Inspections]
+      operationId: uploadInspectionPhoto
+      summary: "Joindre une photo (type reel verifie, taille limitee, re-encodage)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: "Photo enregistree"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionPhoto"
+        "413":
+          $ref: "#/components/responses/Problem"
+        "415":
+          $ref: "#/components/responses/Problem"
+  /harvests:
+    get:
+      tags: [Harvests]
+      operationId: listHarvests
+      summary: "Lister les recoltes (filtre statut) - UC-C02"
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/HarvestStatus"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page de recoltes"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HarvestPage"
+    post:
+      tags: [Harvests]
+      operationId: declareHarvest
+      summary: "Declarer une recolte (UC-A03) - idempotent par client_uuid"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HarvestCreate"
+      responses:
+        "201":
+          description: "Recolte declaree"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Harvest"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /harvests/{id}/validate:
+    post:
+      tags: [Harvests]
+      operationId: validateHarvest
+      summary: "Valider ou signaler une recolte (coordinateur, UC-C02)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: "Recolte validee"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Harvest"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /alerts:
+    get:
+      tags: [Alerts]
+      operationId: listAlerts
+      summary: "Lister les alertes (UC-A02)"
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AlertStatus"
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page d'alertes"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertPage"
+  /alerts/{id}/ack:
+    post:
+      tags: [Alerts]
+      operationId: acknowledgeAlert
+      summary: "Accuser reception d'une alerte"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: "Alerte accusee"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /alerts/{id}/resolve:
+    post:
+      tags: [Alerts]
+      operationId: resolveAlert
+      summary: "Resoudre une alerte (apres inspection)"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: "Alerte resolue"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /visit-plans:
+    get:
+      tags: [Visits]
+      operationId: listVisitPlans
+      summary: "Lister les visites planifiees"
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page de visites"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitPlanPage"
+    post:
+      tags: [Visits]
+      operationId: createVisitPlan
+      summary: "Planifier une visite (coordinateur, UC-C01)"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisitPlanCreate"
+      responses:
+        "201":
+          description: "Visite planifiee"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitPlan"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /sync/push:
+    post:
+      tags: [Sync]
+      operationId: syncPush
+      summary: "Envoyer un lot depuis l'outbox mobile (idempotent)"
+      description: "Un resultat par element : ok, conflict (version serveur renvoyee) ou error. Regles de conflit : ADR-0003."
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncPushRequest"
+      responses:
+        "200":
+          description: "Resultats par element"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncPushResponse"
+        "413":
+          $ref: "#/components/responses/Problem"
+  /sync/pull:
+    get:
+      tags: [Sync]
+      operationId: syncPull
+      summary: "Recuperer les changements depuis un curseur"
+      parameters:
+        - name: since
+          in: query
+          schema:
+            type: string
+          description: "Curseur opaque renvoye par le pull precedent (absent = premiere synchronisation)"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Changements et nouveau curseur"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncPullResponse"
+  /analytics/kpis:
+    get:
+      tags: [Analytics]
+      operationId: getKpis
+      summary: "Indicateurs consolides (UC-G01)"
+      parameters:
+        - name: site
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: "KPIs"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KpiSet"
+  /reports:
+    post:
+      tags: [Analytics]
+      operationId: createReport
+      summary: "Demander un rapport bailleur PDF (UC-G02)"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "202":
+          description: "Generation acceptee"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "403":
+          $ref: "#/components/responses/Problem"
+  /reports/{id}:
+    get:
+      tags: [Analytics]
+      operationId: getReport
+      summary: "Etat / telechargement d'un rapport"
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: "Rapport (statut et lien de telechargement quand pret)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /health:
+    get:
+      tags: [Ops]
+      operationId: getHealth
+      summary: "Liveness (le processus repond)"
+      security: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /ready:
+    get:
+      tags: [Ops]
+      operationId: getReady
+      summary: "Readiness (base et dependances joignables)"
+      security: []
+      responses:
+        "200":
+          description: "Pret"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          $ref: "#/components/responses/Problem"
+  /metrics:
+    get:
+      tags: [Ops]
+      operationId: getMetrics
+      summary: "Metriques Prometheus (reseau interne uniquement)"
+      description: "Metriques nommees queenbee_*. Ne doit pas etre exposee publiquement (restreinte par Caddy)."
+      security: []
+      responses:
+        "200":
+          description: "Format texte Prometheus"
+          content:
+            text/plain:
+              schema:
+                type: string
+  /ops/deployments:
+    get:
+      tags: [Ops]
+      operationId: listDeployments
+      summary: "Deploiements (alimente la vue DevOps et le KPI > 95 %)"
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: "Page de deploiements"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeploymentPage"
+        "403":
+          $ref: "#/components/responses/Problem"
+  /ops/sync-queues:
+    get:
+      tags: [Ops]
+      operationId: listSyncQueues
+      summary: "Etat des files de synchronisation par site"
+      responses:
+        "200":
+          description: "Files"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SyncQueueStatus"
+        "403":
+          $ref: "#/components/responses/Problem"
+  /sim/scenarios/{name}/run:
+    post:
+      tags: [Simulator]
+      operationId: runScenario
+      summary: "Lancer un scenario du simulateur (test uniquement)"
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Nom du scenario YAML (ex. essaimage_ruche_014)"
+      responses:
+        "202":
+          description: "Scenario lance"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimStatus"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /sim/status:
+    get:
+      tags: [Simulator]
+      operationId: getSimStatus
+      summary: "Etat du simulateur"
+      responses:
+        "200":
+          description: "Etat courant"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimStatus"
+  /sim/speed:
+    put:
+      tags: [Simulator]
+      operationId: setSimSpeed
+      summary: "Regler le facteur d'acceleration du temps"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [factor]
+              properties:
+                factor:
+                  type: number
+                  minimum: 1
+                  maximum: 3600
+                  examples: [60]
+      responses:
+        "200":
+          description: "Facteur applique"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimStatus"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT d'acces de 15 minutes. L'autorisation est verifiee cote serveur (RBAC + RLS) a chaque requete."
+  headers:
+    ETag:
+      description: "Validateur de cache (utiliser If-None-Match)"
+      schema:
+        type: string
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Cursor:
+      name: cursor
+      in: query
+      description: "Curseur de pagination opaque (absent = premiere page)"
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: "Cle d'idempotence (UUID) : rejouer la meme requete ne cree pas de doublon"
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Problem:
+      description: "Erreur au format RFC 9457"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    TooManyRequests:
+      description: "Trop de requetes (rate limit)"
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Problem:
+      type: object
+      description: "Probleme HTTP (RFC 9457). Ne jamais exposer de detail interne ni de donnee personnelle."
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        trace_id:
+          type: string
+    Role:
+      type: string
+      enum: [beekeeper, coordinator, manager, admin]
+    Severity:
+      type: string
+      enum: [info, warning, critical]
+    AlertStatus:
+      type: string
+      enum: [open, acknowledged, in_progress, resolved, escalated, false_positive]
+    AlertType:
+      type: string
+      enum: [swarming, weak_colony, thermal_stress, dead_colony, heatwave, offline_sensor, gateway_offline, hive_moved, integrity, radio_jamming]
+    HarvestStatus:
+      type: string
+      enum: [declared, validated, flagged]
+    GeoPoint:
+      type: object
+      required: [lat, lon]
+      properties:
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lon:
+          type: number
+          minimum: -180
+          maximum: 180
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        device_id:
+          type: string
+    LoginResponse:
+      type: object
+      description: "Soit des jetons (champ tokens), soit un defi MFA (champ mfa_challenge_id)."
+      properties:
+        tokens:
+          $ref: "#/components/schemas/TokenPair"
+        mfa_challenge_id:
+          type: string
+    MfaVerifyRequest:
+      type: object
+      required: [mfa_challenge_id, code]
+      properties:
+        mfa_challenge_id:
+          type: string
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+        device_id:
+          type: string
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: "Duree de vie du jeton d'acces en secondes (900)"
+    User:
+      type: object
+      required: [id, email, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        mfa_enabled:
+          type: boolean
+        locale:
+          type: string
+          default: fr
+        active:
+          type: boolean
+    UserCreate:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+        full_name:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        site_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UserUpdate:
+      type: object
+      properties:
+        full_name:
+          type: string
+        active:
+          type: boolean
+        site_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UserPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        next_cursor:
+          type: [string, "null"]
+    AuditEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        ts:
+          type: string
+          format: date-time
+        actor_id:
+          type: [string, "null"]
+          format: uuid
+        action:
+          type: string
+        entity:
+          type: string
+        entity_id:
+          type: string
+    AuditPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditEntry"
+        next_cursor:
+          type: [string, "null"]
+    Site:
+      type: object
+      required: [id, code, name, country_code]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          examples: [SN-CASA]
+        name:
+          type: string
+        country_code:
+          type: string
+          minLength: 2
+          maxLength: 2
+        location:
+          $ref: "#/components/schemas/GeoPoint"
+    SiteSummary:
+      type: object
+      properties:
+        site_id:
+          type: string
+          format: uuid
+        hive_count:
+          type: integer
+        open_alerts:
+          type: integer
+        last_measurement_at:
+          type: [string, "null"]
+          format: date-time
+    Cooperative:
+      type: object
+      required: [id, name, site_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        site_id:
+          type: string
+          format: uuid
+        active:
+          type: boolean
+    Hive:
+      type: object
+      required: [id, code, site_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          examples: [SN-CASA-014]
+        site_id:
+          type: string
+          format: uuid
+        cooperative_id:
+          type: string
+          format: uuid
+        position:
+          $ref: "#/components/schemas/GeoPoint"
+        status:
+          type: string
+        last_weight_kg:
+          type: [number, "null"]
+        health_score:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 100
+        risk:
+          $ref: "#/components/schemas/Severity"
+        version:
+          type: integer
+    HiveCreate:
+      type: object
+      required: [code, site_id, cooperative_id, position]
+      properties:
+        code:
+          type: string
+        site_id:
+          type: string
+          format: uuid
+        cooperative_id:
+          type: string
+          format: uuid
+        position:
+          $ref: "#/components/schemas/GeoPoint"
+        tolerance_m:
+          type: integer
+          default: 30
+    HiveUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+        tolerance_m:
+          type: integer
+    HivePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hive"
+        next_cursor:
+          type: [string, "null"]
+    Measurement:
+      type: object
+      required: [ts]
+      properties:
+        ts:
+          type: string
+          format: date-time
+        weight_kg:
+          type: [number, "null"]
+        temp_internal_c:
+          type: [number, "null"]
+        temp_external_c:
+          type: [number, "null"]
+        humidity_pct:
+          type: [number, "null"]
+        acoustic_activity:
+          type: [number, "null"]
+        battery_pct:
+          type: [number, "null"]
+    Inspection:
+      type: object
+      required: [id, client_uuid, hive_id, inspected_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_uuid:
+          type: string
+          format: uuid
+        hive_id:
+          type: string
+          format: uuid
+        author_id:
+          type: string
+          format: uuid
+        inspected_at:
+          type: string
+          format: date-time
+        visual_state:
+          type: [string, "null"]
+        queen_present:
+          type: [boolean, "null"]
+        behavior:
+          type: [string, "null"]
+        notes:
+          type: [string, "null"]
+        anomaly:
+          type: boolean
+        version:
+          type: integer
+    InspectionCreate:
+      type: object
+      required: [client_uuid, hive_id, inspected_at]
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+        hive_id:
+          type: string
+          format: uuid
+        inspected_at:
+          type: string
+          format: date-time
+        visual_state:
+          type: string
+        queen_present:
+          type: boolean
+        behavior:
+          type: string
+        notes:
+          type: string
+        anomaly:
+          type: boolean
+        visit_plan_id:
+          type: [string, "null"]
+          format: uuid
+    InspectionPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Inspection"
+        next_cursor:
+          type: [string, "null"]
+    InspectionPhoto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        inspection_id:
+          type: string
+          format: uuid
+        bytes:
+          type: integer
+        sha256:
+          type: string
+    Harvest:
+      type: object
+      required: [id, client_uuid, hive_id, harvested_on, volume_kg, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_uuid:
+          type: string
+          format: uuid
+        hive_id:
+          type: string
+          format: uuid
+        harvested_on:
+          type: string
+          format: date
+        volume_kg:
+          type: number
+          minimum: 0
+        predicted_kg:
+          type: [number, "null"]
+        gap_pct:
+          type: [number, "null"]
+        status:
+          $ref: "#/components/schemas/HarvestStatus"
+        version:
+          type: integer
+    HarvestCreate:
+      type: object
+      required: [client_uuid, hive_id, harvested_on, volume_kg]
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+        hive_id:
+          type: string
+          format: uuid
+        harvested_on:
+          type: string
+          format: date
+        volume_kg:
+          type: number
+          minimum: 0
+    HarvestPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Harvest"
+        next_cursor:
+          type: [string, "null"]
+    Alert:
+      type: object
+      required: [id, type, severity, status, detected_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        hive_id:
+          type: [string, "null"]
+          format: uuid
+        gateway_id:
+          type: [string, "null"]
+          format: uuid
+        type:
+          $ref: "#/components/schemas/AlertType"
+        severity:
+          $ref: "#/components/schemas/Severity"
+        confidence:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        health_score:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 100
+        recommendation:
+          type: [string, "null"]
+        status:
+          $ref: "#/components/schemas/AlertStatus"
+        detected_at:
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum: [rules, ml, infra]
+    AlertPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alert"
+        next_cursor:
+          type: [string, "null"]
+    VisitPlan:
+      type: object
+      required: [id, hive_id, assignee_id, planned_for, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        hive_id:
+          type: string
+          format: uuid
+        assignee_id:
+          type: string
+          format: uuid
+        alert_id:
+          type: [string, "null"]
+          format: uuid
+        planned_for:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [planned, done, cancelled]
+    VisitPlanCreate:
+      type: object
+      required: [hive_id, assignee_id, planned_for]
+      properties:
+        hive_id:
+          type: string
+          format: uuid
+        assignee_id:
+          type: string
+          format: uuid
+        alert_id:
+          type: [string, "null"]
+          format: uuid
+        planned_for:
+          type: string
+          format: date
+    VisitPlanPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisitPlan"
+        next_cursor:
+          type: [string, "null"]
+    SyncItem:
+      type: object
+      required: [entity, client_uuid, version, data]
+      properties:
+        entity:
+          type: string
+          enum: [inspection, harvest]
+        client_uuid:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        data:
+          type: object
+          additionalProperties: true
+    SyncPushRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/SyncItem"
+    SyncItemResult:
+      type: object
+      required: [client_uuid, result]
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+        result:
+          type: string
+          enum: [ok, conflict, error]
+        server_id:
+          type: [string, "null"]
+          format: uuid
+        server_version:
+          type: [integer, "null"]
+        server_state:
+          type: [object, "null"]
+          additionalProperties: true
+        problem:
+          oneOf:
+            - $ref: "#/components/schemas/Problem"
+            - type: "null"
+    SyncPushResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SyncItemResult"
+    SyncPullResponse:
+      type: object
+      required: [changes, next_cursor]
+      properties:
+        changes:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        next_cursor:
+          type: string
+        has_more:
+          type: boolean
+    KpiSet:
+      type: object
+      properties:
+        hive_count:
+          type: integer
+        active_hive_rate_pct:
+          type: number
+        open_alerts:
+          type: integer
+        harvest_total_kg:
+          type: number
+        average_health_score:
+          type: [number, "null"]
+    ReportRequest:
+      type: object
+      required: [from, to]
+      properties:
+        site:
+          type: string
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+    Report:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, ready, failed]
+        download_url:
+          type: [string, "null"]
+          format: uri
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        version:
+          type: string
+        checks:
+          type: object
+          additionalProperties:
+            type: string
+    Deployment:
+      type: object
+      required: [id, version, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_id:
+          type: [string, "null"]
+          format: uuid
+        version:
+          type: string
+        git_sha:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: [string, "null"]
+          format: date-time
+        status:
+          type: string
+        rollback_of:
+          type: [string, "null"]
+          format: uuid
+    DeploymentPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Deployment"
+        next_cursor:
+          type: [string, "null"]
+    SyncQueueStatus:
+      type: object
+      properties:
+        site_code:
+          type: string
+        depth:
+          type: integer
+        oldest_age_seconds:
+          type: integer
+        throughput_per_min:
+          type: number
+    SimStatus:
+      type: object
+      properties:
+        running:
+          type: boolean
+        scenario:
+          type: [string, "null"]
+        speed_factor:
+          type: number
+        sites:
+          type: integer
+        hives:
+          type: integer

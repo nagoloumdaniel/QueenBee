@@ -1,0 +1,12 @@
+# Brouillage radio : perte de trames LoRa élevée sur un site.
+scenario: brouillage_cm_bafo
+description: "Perte de trames LoRa à 70 % pendant 30 min (radio_jamming)."
+target: { site: CM-BAFO }
+timeline:
+  - { at: "0m",  action: normal }
+  - { at: "5m",  action: radio_jam, params: { loss_pct: 70, duration: "30m" } }
+  - { at: "35m", action: normal }
+ground_truth:
+  event: radio_jamming
+  at: "5m"
+  expected_alert: radio_jamming

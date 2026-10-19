@@ -1,0 +1,11 @@
+---
+# Déploie le serveur central : socle, Docker, WireGuard, stack applicative, supervision.
+- name: Serveur central QueenBee
+  hosts: central
+  become: true
+  roles:
+    - common
+    - docker
+    - wireguard
+    - central
+    - monitoring
