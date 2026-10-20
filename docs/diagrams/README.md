@@ -10,11 +10,15 @@ Diagrammes **Mermaid versionnés avec le code** (ROADMAP §4.8 et §4.9). GitHub
 | `alert-states.md` | Quels sont les états possibles d'une alerte et les transitions ? | états |
 | `deployment.md` | Comment le code arrive-t-il en production (CI -> registre -> central et sites) ? | flowchart |
 | `er.md` | Quelles sont les tables et leurs relations (MCD) ? | ER |
+| `classes.md` | Quelles classes, attributs typés, méthodes et cardinalités dans le domaine ? | classes (draw.io + PNG) |
+| `use-cases.md` | Qui fait quoi avec QueenBee (UC-A à UC-CY, include/extend) ? | cas d'utilisation (draw.io + PNG) |
+
+Sources éditables draw.io dans `uml/`, exports PNG dans `img/`.
 
 ## Règles (PLAYBOOK §7 MODEL)
 - **Un diagramme = une question** ; titre + légende + source en tête du fichier.
 - Lisible sans l'auteur : noms de participants explicites, pas d'abréviation inconnue.
 - Mise à jour dans la **même PR** que le code qui change le comportement décrit.
-- Diagrammes encore à produire (backlog MODEL) : cas d'utilisation, composants, activité/BPMN de la déclaration de récolte, états d'une inspection, pipeline CI/CD (voir ROADMAP §5.3).
+- Diagrammes encore à produire (backlog MODEL) : composants, activité/BPMN de la déclaration de récolte, états d'une inspection, pipeline CI/CD (voir ROADMAP §5.3).
 - Export en image pour le dossier : copier le Mermaid dans Draw.io ou utiliser `mmdc` (Mermaid CLI), puis référencer l'annexe.
 - Sécurité : ne jamais mettre de secret, d'IP réelle ni de nom d'hôte interne dans un diagramme.
